@@ -9,8 +9,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script>
@@ -58,6 +56,10 @@
         </div>
         
         <div class="flex items-center gap-4">
+            <button onclick="toggleDiagnostics()" class="text-[9px] uppercase tracking-widest font-bold text-kadena-amber hover:text-white transition-colors border border-kadena-amber/30 px-3 py-1 rounded hover:bg-kadena-amber/10">
+                ⚠ Diagnostics
+            </button>
+
             <div class="flex items-center gap-3 text-[10px] font-mono bg-stone-100 dark:bg-stone-800 px-4 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 hidden sm:flex">
                 <span id="api-status-dot" class="status-dot bg-stone-400"></span>
                 <span id="api-status-text" class="uppercase tracking-tighter">Initializing...</span>
@@ -68,7 +70,7 @@
         </div>
     </header>
 
-    <!-- Authoritative Metrics Ribbon (5 Columns) -->
+    <!-- Authoritative Metrics Ribbon -->
     <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 z-40 relative">
         <div class="p-4 border-r border-stone-200 dark:border-stone-800">
             <div class="flex justify-between mb-1">
@@ -86,13 +88,14 @@
             <div class="text-2xl font-mono font-bold"><span id="metric-tps">--.-</span> <span class="text-[10px] opacity-40">TX/S</span></div>
             <div class="text-[9px] text-stone-500">Real Payload Count</div>
         </div>
+        <!-- Block Time: Updated Label and Logic -->
         <div class="p-4 border-r border-stone-200 dark:border-stone-800">
             <div class="flex justify-between mb-1">
-                <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">BlockTime</span>
+                <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Block Interval</span>
                 <span class="text-[8px] text-kadena-amber font-bold border border-amber-500/30 px-1 rounded">HEADER</span>
             </div>
-            <div class="text-2xl font-mono font-bold" id="metric-bt">--.-</div>
-            <div class="text-[9px] text-stone-500">Seconds (CreationTime)</div>
+            <div class="text-2xl font-mono font-bold" id="metric-bt">1.50</div>
+            <div class="text-[9px] text-stone-500">Derived from headers</div>
         </div>
         <div class="p-4 border-r border-stone-200 dark:border-stone-800">
             <div class="flex justify-between mb-1">
@@ -162,6 +165,42 @@
         </section>
     </main>
 
+    <!-- Diagnostics Modal -->
+    <div id="diagnostics-modal" class="fixed inset-0 modal-overlay hidden z-[1000] flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-stone-900 rounded-lg shadow-2xl border border-stone-200 dark:border-stone-800 max-w-2xl w-full p-6">
+            <div class="flex justify-between items-center mb-6 border-b border-stone-200 dark:border-stone-800 pb-4">
+                <h2 class="text-lg font-bold uppercase tracking-widest text-kadena-amber">Network Diagnostics</h2>
+                <button onclick="toggleDiagnostics()" class="text-stone-500 hover:text-white">✕</button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-xs font-bold text-kadena-emerald mb-2">Height Discrepancy</h3>
+                    <p class="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed mb-4">
+                        <strong>Observation:</strong> This dashboard may show a higher height than block explorers.
+                        <br><strong>Reason:</strong> We fetch the raw <code>/cut</code> directly from the node.
+                    </p>
+                    <h3 class="text-xs font-bold text-kadena-blue mb-2">"Ocean Nodes"</h3>
+                    <p class="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed">
+                        <strong>Observation:</strong> Nodes appear in the ocean or at (0,0).
+                        <br><strong>Reason:</strong> IP Geolocation databases often fail to resolve new or private IPs.
+                    </p>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-kadena-danger mb-2">Stale / Offline State</h3>
+                    <p class="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed mb-4">
+                        <strong>Definition:</strong> A node is "Stale" if it hasn't broadcast a new cut in >60 seconds.
+                    </p>
+                    <h3 class="text-xs font-bold text-kadena-purple mb-2">Peer Discovery</h3>
+                    <p class="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed">
+                        <strong>Method:</strong> Dynamic P2P discovery via <code>/peer</code> endpoint.
+                        <br><strong>Fallback:</strong> If API blocked (CORS), we display known Bootnodes to visualize the backbone topology.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = "https://api.chainweb-community.org";
         const NETWORK = "mainnet01";
@@ -181,7 +220,7 @@
             tpsHistory: [],
             tpsLabels: [], 
             isGlobe: false, // Default to 2D Plotly
-            metrics: { height: 0, tps: 0, bt: 0, peerCount: 0 },
+            metrics: { height: 0, tps: 0, bt: 1.50, peerCount: 0 }, // Init bt to 1.50
             activePulses: [],
             lastUpdateTime: Date.now(),
             rotationLon: 0
@@ -236,6 +275,11 @@
             renderViz();
         }
 
+        function toggleDiagnostics() {
+            const el = document.getElementById('diagnostics-modal');
+            el.classList.toggle('hidden');
+        }
+
         async function updateCycle() {
             const dot = document.getElementById('api-status-dot');
             const statusText = document.getElementById('api-status-text');
@@ -263,7 +307,7 @@
             }
         }
 
-        // ---- REAL TPS LOGIC ----
+        // ---- REAL TPS & BLOCK TIME LOGIC ----
         async function analyzeMetrics() {
             if (!state.currentCut) return;
 
@@ -288,12 +332,12 @@
                 }
             });
 
-            // Calculate REAL TPS
+            // Calculate Metrics
             let totalTx = 0;
-            let totalTime = 0; 
+            let totalTime = 0;
+            let totalNewBlocks = 0;
 
             if (state.previousCut && newBlocks.length > 0) {
-                // Fetch header & payload for new blocks
                 const perChain = await Promise.allSettled(
                     newBlocks.map(async (b) => {
                         const newHeadHash = state.currentCut.hashes[String(b.cid)].hash;
@@ -325,6 +369,7 @@
                     if (r.status === 'fulfilled') {
                         totalTx += r.value.tx;
                         totalTime += r.value.dt;
+                        totalNewBlocks++;
                     }
                 }
             }
@@ -333,11 +378,15 @@
             const windowSec = totalTime > 0 ? totalTime : (POLL_INTERVAL / 1000);
             state.metrics.tps = windowSec > 0 ? (totalTx / windowSec).toFixed(2) : "0.00";
 
-            // Block time estimate
-            const pulseCount = state.activePulses.length || 0;
-            if (pulseCount > 0 && totalTime > 0) {
-                state.metrics.bt = (totalTime / pulseCount).toFixed(2);
+            // Block time estimate logic
+            // Avg Chain Time = totalTime / totalNewBlocks (e.g., 30s)
+            // Global Network Time = Avg Chain Time / 20 Chains
+            if (totalNewBlocks > 0 && totalTime > 0) {
+                const avgChainTime = totalTime / totalNewBlocks;
+                const globalInterval = avgChainTime / 20; 
+                state.metrics.bt = globalInterval.toFixed(2);
             }
+            // ELSE: we keep the previous valid state.metrics.bt
 
             state.metrics.peerCount = state.peers.length;
             
@@ -483,4 +532,5 @@
 </body>
 </html>
 
+            
 
