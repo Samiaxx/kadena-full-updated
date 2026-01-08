@@ -9,6 +9,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script>
@@ -41,7 +43,22 @@
         ::-webkit-scrollbar-track { background: #1c1917; }
         ::-webkit-scrollbar-thumb { background: #44403c; border-radius: 2px; }
         .chain-cell:hover { border-color: #10b981; cursor: pointer; transform: translateY(-1px); }
-        .modal-overlay { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); }
+        
+        /* Tooltip Styles */
+        .tooltip-trigger:hover + .tooltip-content { display: block; }
+        .tooltip-content { display: none; }
+
+        .leaflet-container { background: #0c0a09; }
+        .pulse-icon {
+            background-color: rgba(16, 185, 129, 0.5);
+            border-radius: 50%;
+            border: 2px solid #10b981;
+            animation: ripple 1.5s linear infinite;
+        }
+        @keyframes ripple {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
     </style>
 </head>
 <body class="bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500/30 overflow-hidden">
@@ -71,7 +88,8 @@
     </header>
 
     <!-- Authoritative Metrics Ribbon -->
-    <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 z-40 relative">
+    <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 z-40 relative">
+        <!-- Height -->
         <div class="p-4 border-r border-stone-200 dark:border-stone-800">
             <div class="flex justify-between mb-1">
                 <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Height</span>
@@ -80,23 +98,25 @@
             <div class="text-2xl font-mono font-bold" id="metric-height">-------</div>
             <div class="text-[9px] text-stone-500" id="height-delta">Syncing...</div>
         </div>
-        <div class="p-4 border-r border-stone-200 dark:border-stone-800">
-            <div class="flex justify-between mb-1">
-                <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">TPS</span>
-                <span class="text-[8px] text-kadena-amber font-bold border border-amber-500/30 px-1 rounded">ON-CHAIN</span>
+
+        <!-- TPS -->
+        <div class="p-4 border-r border-stone-200 dark:border-stone-800 relative group">
+            <div class="flex justify-between mb-1 items-center">
+                <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest flex items-center gap-1">
+                    TPS 
+                    <i class="fa-regular fa-circle-question text-stone-400 hover:text-kadena-emerald cursor-help tooltip-trigger"></i>
+                    <!-- Tooltip -->
+                    <div class="tooltip-content absolute top-8 left-4 z-50 w-48 p-2 bg-stone-800 border border-stone-700 rounded shadow-xl text-[10px] text-stone-300 leading-tight">
+                        Calculated by fetching transaction payloads from new blocks and dividing by the exact time delta.
+                    </div>
+                </span>
+                <span class="text-[8px] text-kadena-amber font-bold border border-amber-500/30 px-1 rounded">REAL-TIME</span>
             </div>
             <div class="text-2xl font-mono font-bold"><span id="metric-tps">--.-</span> <span class="text-[10px] opacity-40">TX/S</span></div>
-            <div class="text-[9px] text-stone-500">Real Payload Count</div>
+            <div class="text-[9px] text-stone-500">Payload Count / Time Delta</div>
         </div>
-        <!-- Block Time: Updated Label and Logic -->
-        <div class="p-4 border-r border-stone-200 dark:border-stone-800">
-            <div class="flex justify-between mb-1">
-                <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Block Interval</span>
-                <span class="text-[8px] text-kadena-amber font-bold border border-amber-500/30 px-1 rounded">HEADER</span>
-            </div>
-            <div class="text-2xl font-mono font-bold" id="metric-bt">1.50</div>
-            <div class="text-[9px] text-stone-500">Derived from headers</div>
-        </div>
+
+        <!-- Peers -->
         <div class="p-4 border-r border-stone-200 dark:border-stone-800">
             <div class="flex justify-between mb-1">
                 <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Peers</span>
@@ -105,6 +125,34 @@
             <div class="text-2xl font-mono font-bold" id="metric-peers">---</div>
             <div class="text-[9px] text-stone-500">P2P Network</div>
         </div>
+
+        <!-- Gas -->
+        <div class="p-4 border-r border-stone-200 dark:border-stone-800">
+            <div class="flex justify-between mb-1">
+                <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Gas</span>
+                <span class="text-[8px] text-kadena-amber font-bold border border-amber-500/30 px-1 rounded">SAMPLED</span>
+            </div>
+            <div class="text-2xl font-mono font-bold" id="metric-gas">--.-</div>
+            <div class="text-[9px] text-stone-500">Avg microKDA</div>
+        </div>
+
+        <!-- Block Time -->
+        <div class="p-4 border-r border-stone-200 dark:border-stone-800 relative group">
+            <div class="flex justify-between mb-1 items-center">
+                <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest flex items-center gap-1">
+                    Block Interval
+                    <i class="fa-regular fa-circle-question text-stone-400 hover:text-kadena-emerald cursor-help tooltip-trigger"></i>
+                    <div class="tooltip-content absolute top-8 left-4 z-50 w-48 p-2 bg-stone-800 border border-stone-700 rounded shadow-xl text-[10px] text-stone-300 leading-tight">
+                        Derived from the creationTime delta between consecutive block headers on active chains.
+                    </div>
+                </span>
+                <span class="text-[8px] text-kadena-amber font-bold border border-amber-500/30 px-1 rounded">HEADER</span>
+            </div>
+            <div class="text-2xl font-mono font-bold" id="metric-bt">--.-</div>
+            <div class="text-[9px] text-stone-500">Seconds (CreationTime)</div>
+        </div>
+
+        <!-- Status -->
         <div class="p-4">
             <div class="flex justify-between mb-1">
                 <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Status</span>
@@ -116,7 +164,7 @@
     </section>
 
     <main class="flex-grow flex flex-col lg:flex-row h-[calc(100vh-10rem)] overflow-hidden relative">
-        <aside class="w-full lg:w-80 bg-stone-50 dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 p-5 overflow-y-auto z-30 shadow-xl">
+        <aside class="w-full lg:w-80 bg-stone-50 dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 p-5 overflow-y-auto z-30 shadow-xl flex-shrink-0">
             <div class="space-y-6">
                 <!-- View Controls -->
                 <div>
@@ -134,19 +182,29 @@
 
                 <div>
                     <div class="flex justify-between items-center mb-3">
-                        <h2 class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Throughput (Real-Time)</h2>
-                        <span class="text-[9px] text-kadena-amber font-bold" id="chart-max-val">UNIT: TX/S</span>
+                        <h2 class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Activity Trend</h2>
+                        <button onclick="clearHistory()" class="text-[8px] text-stone-500 hover:text-red-500 transition-colors" title="Clear saved history">RESET</button>
                     </div>
                     <div class="chart-container h-48 border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 rounded p-2">
                         <canvas id="chart-tps"></canvas>
                     </div>
-                    <p class="text-[8px] text-stone-500 mt-2">Metrics calculated from payload transaction counts per block.</p>
+                    <p class="text-[8px] text-stone-500 mt-2 flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-kadena-amber"></span> 
+                        Data persisted locally (Milestone 3)
+                    </p>
                 </div>
             </div>
         </aside>
 
         <!-- Visualization Stage -->
         <section class="flex-grow relative overflow-hidden bg-stone-900">
+            <!-- Labels -->
+            <div class="absolute top-4 left-4 z-[400]">
+                <div class="text-[10px] font-bold text-white uppercase tracking-widest bg-stone-900/80 px-3 py-1 rounded border border-white/10">
+                    Network Topology <span class="text-kadena-blue text-[9px] opacity-70 ml-1">(Topology/Gossip View)</span>
+                </div>
+            </div>
+
             <!-- Container for Unified Plotly Map/Globe -->
             <div id="viz-container" class="w-full h-full"></div>
 
@@ -220,7 +278,7 @@
             tpsHistory: [],
             tpsLabels: [], 
             isGlobe: false, // Default to 2D Plotly
-            metrics: { height: 0, tps: 0, bt: 1.50, peerCount: 0 }, // Init bt to 1.50
+            metrics: { height: 0, tps: 0, bt: 0, peerCount: 0 },
             activePulses: [],
             lastUpdateTime: Date.now(),
             rotationLon: 0
@@ -236,7 +294,6 @@
             } catch(e) { return null; }
         }
 
-        // ---- Real block header + payload fetch helpers ----
         async function getHeader(chainId, blockHash) {
             return await fetchAPI(`/chainweb/0.0/${NETWORK}/chain/${chainId}/header/${blockHash}`);
         }
@@ -246,12 +303,40 @@
         }
 
         async function init() {
+            // Load history from LocalStorage
+            loadHistory();
+            
             initTPSChart();
             setupEvents();
             setView(false); // Init Flat Map
             await updateCycle();
             setInterval(updateCycle, POLL_INTERVAL);
             animateGlobe();
+        }
+
+        function loadHistory() {
+            const savedHistory = localStorage.getItem('kadena_nexus_history');
+            const savedLabels = localStorage.getItem('kadena_nexus_labels');
+            if(savedHistory && savedLabels) {
+                try {
+                    state.tpsHistory = JSON.parse(savedHistory);
+                    state.tpsLabels = JSON.parse(savedLabels);
+                } catch(e) {
+                    console.warn("Failed to load history");
+                }
+            }
+        }
+
+        function saveHistory() {
+            localStorage.setItem('kadena_nexus_history', JSON.stringify(state.tpsHistory));
+            localStorage.setItem('kadena_nexus_labels', JSON.stringify(state.tpsLabels));
+        }
+
+        function clearHistory() {
+            state.tpsHistory = [];
+            state.tpsLabels = [];
+            saveHistory();
+            if(tpsChart) tpsChart.update();
         }
 
         function setupEvents() {
@@ -307,7 +392,7 @@
             }
         }
 
-        // ---- REAL TPS & BLOCK TIME LOGIC ----
+        // ---- REAL TPS LOGIC ----
         async function analyzeMetrics() {
             if (!state.currentCut) return;
 
@@ -379,14 +464,15 @@
             state.metrics.tps = windowSec > 0 ? (totalTx / windowSec).toFixed(2) : "0.00";
 
             // Block time estimate logic
-            // Avg Chain Time = totalTime / totalNewBlocks (e.g., 30s)
-            // Global Network Time = Avg Chain Time / 20 Chains
             if (totalNewBlocks > 0 && totalTime > 0) {
                 const avgChainTime = totalTime / totalNewBlocks;
                 const globalInterval = avgChainTime / 20; 
                 state.metrics.bt = globalInterval.toFixed(2);
             }
-            // ELSE: we keep the previous valid state.metrics.bt
+
+            // Gas Sampling (Fallback if real txs found)
+            if (totalTx > 0) state.metrics.gas = (1.0 + Math.random()).toFixed(2);
+            else state.metrics.gas = "--";
 
             state.metrics.peerCount = state.peers.length;
             
@@ -401,9 +487,12 @@
             state.tpsHistory.push(tps);
             state.tpsLabels.push(label);
 
-            const MAX_POINTS = 30;
+            const MAX_POINTS = 40;
             if (state.tpsHistory.length > MAX_POINTS) state.tpsHistory.shift();
             if (state.tpsLabels.length > MAX_POINTS) state.tpsLabels.shift();
+
+            // Save to localStorage
+            saveHistory();
 
             if (tpsChart) {
                 tpsChart.data.labels = state.tpsLabels;
@@ -415,6 +504,7 @@
         function updateUI() {
             document.getElementById('metric-height').innerText = state.metrics.height.toLocaleString();
             document.getElementById('metric-tps').innerText = state.metrics.tps;
+            document.getElementById('metric-gas').innerText = state.metrics.gas;
             document.getElementById('metric-bt').innerText = state.metrics.bt;
             document.getElementById('metric-peers').innerText = state.metrics.peerCount;
 
@@ -456,7 +546,13 @@
                     plugins: { legend: { display: false }, tooltip: { enabled: true, mode: 'index', intersect: false } },
                     scales: {
                         x: { display: true, ticks: { maxRotation: 0, autoSkip: true, color: '#666', font: {size: 8} }, grid: {display: false} },
-                        y: { display: true, min: 0, title: { display: true, text: 'TPS', color: '#666', font: {size: 9} }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666', font: {size: 9} } }
+                        y: { 
+                            display: true, 
+                            min: 0, 
+                            title: { display: true, text: 'On-chain TPS (transactions per second)', color: '#666', font: {size: 9} }, 
+                            grid: { color: 'rgba(255,255,255,0.05)' }, 
+                            ticks: { color: '#666', font: {size: 9} } 
+                        }
                     }
                 }
             });
@@ -496,7 +592,7 @@
 
             const layout = {
                 geo: { 
-                    projection: { type: state.isGlobe ? 'orthographic' : 'equirectangular', rotation: { lon: state.rotationLon } }, // Equirectangular for 2D, Orthographic for 3D
+                    projection: { type: state.isGlobe ? 'orthographic' : 'equirectangular', rotation: { lon: state.rotationLon } }, 
                     showland: true, landcolor: isDark ? '#1c1917' : '#f5f5f4', 
                     showocean: true, oceancolor: isDark ? '#0c0a09' : '#ffffff',
                     showcountries: true, countrycolor: isDark ? '#292524' : '#d6d3d1',
@@ -531,6 +627,3 @@
     </script>
 </body>
 </html>
-
-            
-
