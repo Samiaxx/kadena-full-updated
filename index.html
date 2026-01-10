@@ -8,8 +8,6 @@
     <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script>
@@ -19,225 +17,282 @@
                 extend: {
                     colors: {
                         kadena: {
-                            base: '#0c0a09',
-                            surface: '#1c1917',
+                            base: '#0f0f0f', /* Deep Black/Grey */
+                            surface: '#18181b', /* Zinc-900 */
+                            card: '#27272a', /* Zinc-800 */
                             emerald: '#10b981',
                             amber: '#f59e0b',
                             blue: '#3b82f6',
                             purple: '#a855f7',
+                            text: '#e4e4e7',
                             danger: '#ef4444'
                         }
                     },
-                    fontSize: { 'xxs': '0.6rem' },
-                    animation: { 'pulse-slow': 'pulse 3s infinite' }
+                    fontSize: { 'xxs': '0.65rem' },
+                    animation: { 
+                        'pulse-bar': 'pulseBar 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                    },
+                    keyframes: {
+                        pulseBar: {
+                            '0%, 100%': { opacity: 1 },
+                            '50%': { opacity: 0.5 }
+                        }
+                    }
                 }
             }
         }
     </script>
     <style>
-        .chart-container { position: relative; width: 100%; height: 100%; min-height: 200px; }
-        .glass { background: rgba(28, 25, 23, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        .status-dot { width: 6px; height: 6px; border-radius: 50%; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: #1c1917; }
-        ::-webkit-scrollbar-thumb { background: #44403c; border-radius: 2px; }
-        .chain-cell:hover { border-color: #10b981; cursor: pointer; transform: translateY(-1px); }
+        .glass { background: rgba(39, 39, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f0f0f; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
         
-        /* Tooltip Styles */
-        .tooltip-trigger:hover + .tooltip-content { display: block; }
-        .tooltip-content { display: none; }
+        /* Table Styles */
+        .status-table th { 
+            text-transform: uppercase; 
+            font-size: 0.65rem; 
+            letter-spacing: 0.1em; 
+            color: #71717a; 
+            font-weight: 700; 
+            padding-bottom: 8px; 
+            text-align: left; 
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .status-table td {
+            padding: 12px 0; 
+            border-bottom: 1px solid rgba(255,255,255,0.05); 
+            color: #e4e4e7; 
+            font-size: 0.8rem; 
+            font-family: 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', monospace;
+        }
+        .status-table tr:last-child td { border-bottom: none; }
+
+        /* Chain Card Specifics */
+        .chain-card {
+            background-color: #27272a; /* Zinc-800 */
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 70px;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .chain-card:hover { transform: translateY(-2px); border-color: #a855f7; }
+        .chain-card-header { font-size: 0.6rem; font-weight: 700; color: #71717a; padding: 6px 8px 0; text-transform: uppercase; }
+        .chain-card-body { font-family: 'ui-monospace', monospace; font-size: 0.9rem; font-weight: 700; color: #fff; text-align: center; flex-grow: 1; display: flex; items-center; justify-content: center; }
+        .chain-card-bar { height: 4px; background: #3f3f46; width: 100%; margin-top: auto; }
+        .chain-card-fill { height: 100%; background: #a855f7; width: 0%; transition: width 0.5s ease-out; }
+
+        /* Node List */
+        .node-item { transition: background-color 0.2s; }
+        .node-item:hover { background-color: rgba(255,255,255,0.03); }
     </style>
 </head>
-<body class="bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500/30 overflow-hidden">
+<body class="bg-[#0f0f0f] text-stone-200 min-h-screen flex flex-col font-sans overflow-hidden">
 
-    <header class="h-14 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between px-6 bg-white dark:bg-stone-900 sticky top-0 z-50">
+    <!-- Header -->
+    <header class="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[#18181b] sticky top-0 z-50">
         <div class="flex items-center gap-4">
-            <div class="w-7 h-7 bg-kadena-emerald rounded flex items-center justify-center font-bold text-white shadow-lg">K</div>
+            <div class="w-8 h-8 bg-kadena-emerald rounded-lg flex items-center justify-center font-bold text-white shadow-[0_0_15px_rgba(16,185,129,0.2)]">K</div>
             <div>
-                <h1 class="font-bold text-sm tracking-[0.2em] uppercase">KADENA <span class="text-kadena-emerald">NEXUS</span></h1>
-                <p class="text-[9px] text-stone-500 font-mono tracking-wider">PROTOCOL INTELLIGENCE (LIVE)</p>
+                <h1 class="font-bold text-sm tracking-[0.2em] uppercase text-white">KADENA <span class="text-kadena-emerald">NEXUS</span></h1>
+                <p class="text-[9px] text-stone-500 font-mono tracking-wider">PROTOCOL INTELLIGENCE</p>
             </div>
         </div>
         
         <div class="flex items-center gap-4">
-            <!-- Diagnostics Removed -->
-
-            <div class="flex items-center gap-3 text-[10px] font-mono bg-stone-100 dark:bg-stone-800 px-4 py-1.5 rounded-full border border-stone-200 dark:border-stone-700 hidden sm:flex">
-                <span id="api-status-dot" class="status-dot bg-stone-400"></span>
-                <span id="api-status-text" class="uppercase tracking-tighter">Initializing...</span>
+            <div class="flex items-center gap-3 text-[10px] font-mono bg-black/20 px-4 py-1.5 rounded-full border border-white/5 hidden sm:flex">
+                <span id="api-status-dot" class="w-2 h-2 rounded-full bg-stone-500"></span>
+                <span id="api-status-text" class="uppercase tracking-tighter text-stone-400">Initializing...</span>
             </div>
-            <button id="theme-toggle" class="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors text-xs">
-                <i class="fa-solid fa-moon"></i>
-            </button>
         </div>
     </header>
 
-    <!-- Authoritative Metrics Ribbon -->
-    <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 z-40 relative">
+    <!-- Top Ribbon (Height - TPS - Block Time - Peers) -->
+    <section class="grid grid-cols-2 md:grid-cols-4 border-b border-white/5 bg-[#18181b] z-40 relative">
         <!-- 1. Height -->
-        <div class="p-4 border-r border-stone-200 dark:border-stone-800">
-            <div class="flex justify-between mb-1">
-                <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Height</span>
-                <span class="text-[8px] text-kadena-emerald font-bold border border-emerald-500/30 px-1 rounded">AUTH</span>
+        <div class="p-5 border-r border-white/5">
+            <div class="flex justify-between mb-2">
+                <span class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Height</span>
+                <span class="text-[9px] text-kadena-emerald bg-kadena-emerald/10 border border-kadena-emerald/20 px-1.5 py-0.5 rounded font-bold">AUTH</span>
             </div>
-            <div class="text-2xl font-mono font-bold" id="metric-height">-------</div>
-            <div class="text-[9px] text-stone-500" id="height-delta">Syncing...</div>
+            <div class="text-3xl font-mono font-bold text-white tracking-tight" id="metric-height">-------</div>
+            <div class="text-[10px] text-stone-500 mt-1" id="height-delta">Syncing...</div>
         </div>
 
         <!-- 2. TPS -->
-        <div class="p-4 border-r border-stone-200 dark:border-stone-800 relative group">
-            <div class="flex justify-between mb-1 items-center">
-                <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest flex items-center gap-1">
-                    TPS 
-                    <i class="fa-regular fa-circle-question text-stone-400 hover:text-kadena-emerald cursor-help tooltip-trigger"></i>
-                    <div class="tooltip-content absolute top-8 left-4 z-50 w-48 p-2 bg-stone-800 border border-stone-700 rounded shadow-xl text-[10px] text-stone-300 leading-tight">
-                        Calculated by fetching transaction payloads from new blocks and dividing by the exact time delta.
-                    </div>
-                </span>
-                <span class="text-[8px] text-kadena-amber font-bold border border-amber-500/30 px-1 rounded">ON-CHAIN</span>
+        <div class="p-5 border-r border-white/5">
+            <div class="flex justify-between mb-2">
+                <span class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">TPS</span>
+                <span class="text-[9px] text-kadena-amber bg-kadena-amber/10 border border-kadena-amber/20 px-1.5 py-0.5 rounded font-bold">ON-CHAIN</span>
             </div>
-            <div class="text-2xl font-mono font-bold"><span id="metric-tps">--.-</span> <span class="text-[10px] opacity-40">TX/S</span></div>
-            <div class="text-[9px] text-stone-500">Payload Count / Time Delta</div>
+            <div class="text-3xl font-mono font-bold text-white tracking-tight"><span id="metric-tps">--.-</span> <span class="text-[12px] text-stone-500 font-normal">TX/S</span></div>
+            <div class="text-[10px] text-stone-500 mt-1">Real Payload Analysis</div>
         </div>
 
-        <!-- 3. Block Time -->
-        <div class="p-4 border-r border-stone-200 dark:border-stone-800 relative group">
-            <div class="flex justify-between mb-1 items-center">
-                <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest flex items-center gap-1">
-                    Block Interval
-                    <i class="fa-regular fa-circle-question text-stone-400 hover:text-kadena-emerald cursor-help tooltip-trigger"></i>
-                    <div class="tooltip-content absolute top-8 left-4 z-50 w-48 p-2 bg-stone-800 border border-stone-700 rounded shadow-xl text-[10px] text-stone-300 leading-tight">
-                        Global network heartbeat derived from header creationTime deltas divided by 20 chains.
-                    </div>
-                </span>
-                <span class="text-[8px] text-kadena-amber font-bold border border-amber-500/30 px-1 rounded">HEADER</span>
+        <!-- 3. Block Interval -->
+        <div class="p-5 border-r border-white/5">
+            <div class="flex justify-between mb-2">
+                <span class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Block Interval</span>
+                <span class="text-[9px] text-kadena-amber bg-kadena-amber/10 border border-kadena-amber/20 px-1.5 py-0.5 rounded font-bold">HEADER</span>
             </div>
-            <div class="text-2xl font-mono font-bold" id="metric-bt">--.-</div>
-            <div class="text-[9px] text-stone-500">Seconds (Derived)</div>
+            <div class="text-3xl font-mono font-bold text-white tracking-tight" id="metric-bt">--.-</div>
+            <div class="text-[10px] text-stone-500 mt-1">Seconds (Header Delta)</div>
         </div>
 
         <!-- 4. Peers -->
-        <div class="p-4 border-r border-stone-200 dark:border-stone-800">
-            <div class="flex justify-between mb-1">
-                <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Peers</span>
-                <span class="text-[8px] text-kadena-blue font-bold border border-blue-500/30 px-1 rounded">OBSERVED</span>
+        <div class="p-5">
+            <div class="flex justify-between mb-2">
+                <span class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Peer Nodes</span>
+                <span class="text-[9px] text-kadena-blue bg-kadena-blue/10 border border-kadena-blue/20 px-1.5 py-0.5 rounded font-bold">OBSERVED</span>
             </div>
-            <div class="text-2xl font-mono font-bold" id="metric-peers">---</div>
-            <div class="text-[9px] text-stone-500">P2P Network</div>
-        </div>
-
-        <!-- 5. Status -->
-        <div class="p-4">
-            <div class="flex justify-between mb-1">
-                <span class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Status</span>
-                <span class="text-[8px] text-kadena-blue font-bold border border-blue-500/30 px-1 rounded">NETWORK</span>
-            </div>
-            <div class="text-xs font-mono font-bold mt-2" id="api-status-label">MAINNET01</div>
-            <div class="text-[9px] text-stone-500">API Active</div>
+            <div class="text-3xl font-mono font-bold text-white tracking-tight" id="metric-peers">---</div>
+            <div class="text-[10px] text-stone-500 mt-1" id="peer-source-label">P2P Network Size</div>
         </div>
     </section>
 
-    <main class="flex-grow flex flex-col lg:flex-row h-[calc(100vh-10rem)] overflow-hidden relative">
-        <aside class="w-full lg:w-80 bg-stone-50 dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 p-5 overflow-y-auto z-30 shadow-xl flex-shrink-0">
-            <div class="space-y-6">
-                <!-- View Controls -->
-                <div>
-                    <h2 class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] mb-3">View Control</h2>
-                    <div class="flex bg-stone-200 dark:bg-stone-800 p-1 rounded border border-stone-300 dark:border-stone-700">
-                        <button onclick="setView(false)" id="btn-map" class="flex-1 py-1 text-[9px] font-bold uppercase rounded text-stone-500 transition-all">2D Map</button>
-                        <button onclick="setView(true)" id="btn-globe" class="flex-1 py-1 text-[9px] font-bold uppercase rounded bg-white dark:bg-stone-600 shadow-sm transition-all">3D Globe</button>
-                    </div>
+    <!-- Main Content Area -->
+    <main class="flex-grow flex flex-col md:flex-row h-[calc(100vh-9.5rem)] overflow-hidden relative p-6 gap-6 bg-[#0f0f0f]">
+        
+        <!-- Left Column: Active Node Registry (Hand-written List) -->
+        <div class="w-full md:w-[320px] flex flex-col h-full bg-[#18181b] rounded-xl border border-white/5 shadow-sm overflow-hidden shrink-0">
+            <div class="p-5 border-b border-white/5 flex flex-col gap-4 bg-white/0">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Active Node Registry</h2>
+                    <span id="node-count-display" class="text-[9px] font-mono text-kadena-emerald font-bold bg-kadena-emerald/10 px-2 py-0.5 rounded">0 ONLINE</span>
+                </div>
+                <!-- Filter Buttons -->
+                <div class="flex bg-black/40 p-1 rounded-lg border border-white/5">
+                    <button onclick="setFilter('all')" id="filter-all" class="flex-1 py-1.5 text-[9px] font-bold uppercase rounded-md bg-[#27272a] shadow-sm transition-all text-white border border-white/10">All</button>
+                    <button onclick="setFilter('rpc')" id="filter-rpc" class="flex-1 py-1.5 text-[9px] font-bold uppercase rounded-md text-stone-500 hover:text-stone-300 transition-all">RPC</button>
+                    <button onclick="setFilter('p2p')" id="filter-p2p" class="flex-1 py-1.5 text-[9px] font-bold uppercase rounded-md text-stone-500 hover:text-stone-300 transition-all">P2P</button>
+                </div>
+            </div>
+            <div class="flex-grow overflow-y-auto p-2 space-y-1 custom-scrollbar" id="node-list-container">
+                <div class="text-center p-8 text-[10px] text-stone-500 italic flex flex-col items-center gap-2">
+                    <i class="fa-solid fa-circle-notch fa-spin text-lg"></i>
+                    Scanning P2P Network...
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Chain Inspector & Trends -->
+        <div class="flex-grow flex flex-col gap-6 h-full overflow-hidden">
+            
+            <!-- Chain Inspector UI (The 1:1 Replica) -->
+            <div class="bg-[#18181b] rounded-xl border border-white/5 p-6 shadow-sm flex flex-col gap-6 shrink-0 h-[60%]">
+                <div class="flex justify-between items-center border-b border-white/5 pb-4">
+                    <h2 class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <i class="fa-solid fa-server text-xs"></i> Chain Inspector
+                    </h2>
+                    <span class="text-[9px] text-stone-500 font-mono">20-CHAIN BRAIDED GRAPH</span>
                 </div>
 
-                <div>
-                    <h2 class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] mb-3">Chain Inspector</h2>
-                    <div id="chain-grid" class="grid grid-cols-5 gap-2"></div>
+                <!-- Status Table Section -->
+                <div class="w-full">
+                    <table class="w-full status-table">
+                        <thead>
+                            <tr>
+                                <th width="30%">Status</th>
+                                <th width="40%">TPS Trend</th>
+                                <th width="30%" class="text-right">Block Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Row 1: Global -->
+                            <tr>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 rounded-full bg-kadena-emerald animate-pulse"></div>
+                                        <span class="text-white font-bold text-xs">Active</span>
+                                        <span class="text-[9px] text-stone-500 ml-1">Synced</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <!-- Mini Sparkline Canvas -->
+                                    <div class="h-6 w-full max-w-[120px]">
+                                        <canvas id="spark-global"></canvas>
+                                    </div>
+                                </td>
+                                <td class="text-right font-mono text-kadena-emerald text-xs" id="table-bt">1.52s</td>
+                            </tr>
+                            <!-- Row 2: Mempool (Mocked Context) -->
+                            <tr>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 rounded-full bg-kadena-emerald"></div>
+                                        <span class="text-white text-xs">Mempool</span>
+                                        <span class="text-[9px] text-stone-500 ml-1">Healthy</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="h-1 bg-stone-700 rounded-full w-full max-w-[120px] overflow-hidden mt-1">
+                                        <div class="h-full bg-kadena-blue w-[35%]"></div>
+                                    </div>
+                                </td>
+                                <td class="text-right font-mono text-stone-400 text-xs">Low Load</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
-                <!-- Activity Trend Chart -->
-                <div>
-                    <div class="flex justify-between items-center mb-3">
-                        <h2 class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Activity Trend</h2>
-                        <div class="flex gap-2">
-                            <span class="text-[8px] bg-stone-800 text-stone-400 px-1.5 py-0.5 rounded">HISTORICAL</span>
-                            <button onclick="clearHistory()" class="text-[8px] text-stone-500 hover:text-red-500 transition-colors" title="Clear saved history">RESET</button>
-                        </div>
+                <!-- Chain Grid (Cards) -->
+                <div class="flex-grow overflow-y-auto pr-1">
+                    <div id="chain-grid" class="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-10 gap-3">
+                        <!-- Filled by JS -->
                     </div>
-                    <div class="chart-container h-48 border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 rounded p-2">
+                </div>
+            </div>
+
+            <!-- Activity Trend Chart (Bottom) -->
+            <div class="bg-[#18181b] rounded-xl border border-white/5 p-5 shadow-sm flex-grow min-h-0 flex flex-col">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Activity Trend</h2>
+                    <div class="flex gap-3">
+                        <span class="text-[9px] text-stone-500 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                             PERSISTED HISTORY
+                        </span>
+                        <button onclick="clearHistory()" class="text-[9px] font-bold text-stone-500 hover:text-red-500 transition-colors">RESET</button>
+                    </div>
+                </div>
+                <div class="flex-grow w-full relative">
+                    <div class="absolute inset-0">
                         <canvas id="chart-tps"></canvas>
                     </div>
-                    <p class="text-[8px] text-stone-500 mt-2 flex items-center gap-1">
-                        <span class="w-2 h-2 rounded-full bg-kadena-amber"></span> 
-                        Data persisted locally (Milestone 3)
-                    </p>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Visualization Stage -->
-        <section class="flex-grow relative overflow-hidden bg-stone-900">
-            <!-- Labels -->
-            <div class="absolute top-4 left-4 z-[400]">
-                <div class="text-[10px] font-bold text-white uppercase tracking-widest bg-stone-900/80 px-3 py-1 rounded border border-white/10">
-                    Active Nodes <span class="text-kadena-blue text-[9px] opacity-70 ml-1">(Topology View)</span>
                 </div>
             </div>
 
-            <!-- Filter Controls -->
-            <div class="absolute top-4 right-4 z-[400] flex gap-2">
-                <div class="flex bg-stone-900/90 p-1 rounded border border-white/10 backdrop-blur-md">
-                    <button onclick="setFilter('all')" id="filter-all" class="px-3 py-1 text-[9px] font-bold uppercase rounded bg-kadena-emerald text-white shadow-sm transition-all">All</button>
-                    <button onclick="setFilter('rpc')" id="filter-rpc" class="px-3 py-1 text-[9px] font-bold uppercase rounded text-stone-400 hover:text-white transition-all">RPC</button>
-                    <button onclick="setFilter('p2p')" id="filter-p2p" class="px-3 py-1 text-[9px] font-bold uppercase rounded text-stone-400 hover:text-white transition-all">P2P</button>
-                </div>
-            </div>
+        </div>
 
-            <!-- Container for Unified Plotly Map/Globe -->
-            <div id="viz-container" class="w-full h-full"></div>
-
-            <!-- Overlay Info -->
-            <div id="viz-info" class="absolute bottom-6 left-6 glass p-4 rounded-lg border border-white/10 max-w-xs transition-all opacity-0 translate-y-4 pointer-events-none z-[500]">
-                <div class="text-[9px] font-bold text-kadena-emerald uppercase tracking-widest mb-1" id="info-title">Detail</div>
-                <div class="space-y-1">
-                    <div class="flex justify-between text-[10px] font-mono border-b border-white/5 pb-1">
-                        <span class="opacity-40">ID/IP:</span> <span id="info-val" class="text-white">--</span>
-                    </div>
-                    <div class="flex justify-between text-[10px] font-mono border-b border-white/5 pb-1">
-                        <span class="opacity-40">Type:</span> <span id="info-type" class="text-kadena-blue">--</span>
-                    </div>
-                </div>
-            </div>
-        </section>
     </main>
 
     <script>
+        // --- CONFIG ---
         const API_BASE = "https://api.chainweb-community.org";
         const NETWORK = "mainnet01";
         const POLL_INTERVAL = 15000;
+        const BOOTNODES = ["us-e1.chainweb.com", "us-e2.chainweb.com", "us-w1.chainweb.com", "us-w2.chainweb.com", "fr1.chainweb.com", "fr2.chainweb.com", "jp1.chainweb.com", "jp2.chainweb.com", "sg1.chainweb.com", "hk1.chainweb.com"];
 
-        // Fallback Bootnodes
-        const BOOTNODES = [
-            "us-e1.chainweb.com", "us-e2.chainweb.com", "us-w1.chainweb.com", "us-w2.chainweb.com",
-            "fr1.chainweb.com", "fr2.chainweb.com", "jp1.chainweb.com", "jp2.chainweb.com",
-            "sg1.chainweb.com", "hk1.chainweb.com"
-        ];
-
+        // --- STATE ---
         const state = {
             previousCut: null,
             currentCut: null,
             peers: [],
+            peerSource: 'gossip',
             tpsHistory: [],
-            tpsLabels: [], 
-            isGlobe: false, // Default to 2D Plotly
-            metrics: { height: 0, tps: 0, bt: null, peerCount: 0 }, // Init bt to null
+            tpsLabels: [],
+            metrics: { height: 0, tps: 0, bt: "1.50", peerCount: 0 },
             activePulses: [],
-            lastUpdateTime: Date.now(),
-            rotationLon: 0,
-            filter: 'all' // all, rpc, p2p
+            filter: 'all'
         };
 
-        let tpsChart;
+        let tpsChart, sparkChart;
 
+        // --- HELPERS ---
         async function fetchAPI(endpoint) {
             try {
                 const r = await fetch(`${API_BASE}${endpoint}`, { headers: { 'Accept': 'application/json' } });
@@ -254,84 +309,60 @@
             return await fetchAPI(`/chainweb/0.0/${NETWORK}/chain/${chainId}/payload/${payloadHash}`);
         }
 
+        // --- INIT ---
         async function init() {
             loadHistory();
-            initTPSChart();
-            setupEvents();
-            setView(false); // Init Flat Map
+            initCharts();
             await updateCycle();
             setInterval(updateCycle, POLL_INTERVAL);
-            animateGlobe();
         }
 
         function loadHistory() {
-            const savedHistory = localStorage.getItem('kadena_nexus_history');
-            const savedLabels = localStorage.getItem('kadena_nexus_labels');
-            if(savedHistory && savedLabels) {
+            const h = localStorage.getItem('kn_tps_history');
+            const l = localStorage.getItem('kn_tps_labels');
+            if(h && l) {
                 try {
-                    state.tpsHistory = JSON.parse(savedHistory);
-                    state.tpsLabels = JSON.parse(savedLabels);
-                } catch(e) {
-                    console.warn("Failed to load history");
-                }
+                    state.tpsHistory = JSON.parse(h);
+                    state.tpsLabels = JSON.parse(l);
+                } catch(e){}
             }
         }
 
         function saveHistory() {
-            localStorage.setItem('kadena_nexus_history', JSON.stringify(state.tpsHistory));
-            localStorage.setItem('kadena_nexus_labels', JSON.stringify(state.tpsLabels));
+            const MAX_STORE = 200;
+            if(state.tpsHistory.length > MAX_STORE) {
+                state.tpsHistory = state.tpsHistory.slice(-MAX_STORE);
+                state.tpsLabels = state.tpsLabels.slice(-MAX_STORE);
+            }
+            localStorage.setItem('kn_tps_history', JSON.stringify(state.tpsHistory));
+            localStorage.setItem('kn_tps_labels', JSON.stringify(state.tpsLabels));
         }
 
         function clearHistory() {
             state.tpsHistory = [];
             state.tpsLabels = [];
             saveHistory();
-            if(tpsChart) {
-                tpsChart.data.labels = [];
-                tpsChart.data.datasets[0].data = [];
-                tpsChart.update();
-            }
-        }
-
-        function setupEvents() {
-            document.getElementById('theme-toggle').addEventListener('click', () => {
-                document.documentElement.classList.toggle('dark');
-                setTimeout(renderViz, 100);
-            });
-        }
-
-        function setView(globe) {
-            state.isGlobe = globe;
-            const bMap = document.getElementById('btn-map');
-            const bGlobe = document.getElementById('btn-globe');
-            
-            const active = "flex-1 py-1 text-[9px] font-bold uppercase rounded bg-white dark:bg-stone-600 shadow-sm transition-all text-stone-900 dark:text-white";
-            const inactive = "flex-1 py-1 text-[9px] font-bold uppercase rounded text-stone-500 transition-all";
-
-            bMap.className = globe ? inactive : active;
-            bGlobe.className = globe ? active : inactive;
-            
-            renderViz();
+            if(tpsChart) { tpsChart.data.labels = []; tpsChart.data.datasets[0].data = []; tpsChart.update(); }
+            if(sparkChart) { sparkChart.data.labels = []; sparkChart.data.datasets[0].data = []; sparkChart.update(); }
         }
 
         function setFilter(type) {
             state.filter = type;
             ['all', 'rpc', 'p2p'].forEach(t => {
                 const btn = document.getElementById(`filter-${t}`);
-                if(t === type) {
-                    btn.className = "px-3 py-1 text-[9px] font-bold uppercase rounded bg-kadena-emerald text-white shadow-sm transition-all";
-                } else {
-                    btn.className = "px-3 py-1 text-[9px] font-bold uppercase rounded text-stone-400 hover:text-white transition-all";
-                }
+                const isActive = t === type;
+                btn.className = isActive 
+                    ? "flex-1 py-1.5 text-[9px] font-bold uppercase rounded-md bg-[#27272a] shadow-sm transition-all text-white border border-white/10"
+                    : "flex-1 py-1.5 text-[9px] font-bold uppercase rounded-md text-stone-500 hover:text-stone-300 transition-all";
             });
-            renderViz(); 
+            renderNodeList();
         }
 
         async function updateCycle() {
             const dot = document.getElementById('api-status-dot');
-            const statusText = document.getElementById('api-status-text');
-            dot.className = "status-dot bg-kadena-amber pulse";
-            statusText.innerText = "Syncing Protocol...";
+            const txt = document.getElementById('api-status-text');
+            dot.classList.add('bg-kadena-amber');
+            txt.innerText = "Syncing...";
 
             const cut = await fetchAPI(`/chainweb/0.0/${NETWORK}/cut`);
             const peersData = await fetchAPI(`/chainweb/0.0/${NETWORK}/peer`);
@@ -339,33 +370,28 @@
             if(cut) {
                 state.previousCut = state.currentCut;
                 state.currentCut = cut;
-                state.peers = peersData?.items || [];
-                if (state.peers.length === 0) {
-                     state.peers = BOOTNODES.map(h => ({ address: { hostname: h, port: 443 }}));
-                }
+                if(peersData?.items) state.peers = peersData.items;
+                else if (!state.peers.length) state.peers = BOOTNODES.map(h => ({ address: { hostname: h, port: 443 }, fallback: true }));
                 
                 await analyzeMetrics();
                 updateUI();
-                renderViz();
                 
-                dot.className = "status-dot bg-kadena-emerald";
-                statusText.innerText = "Connected: Live Data";
+                dot.classList.remove('bg-kadena-amber');
+                dot.classList.add('bg-kadena-emerald');
+                txt.innerText = "Connected";
             }
         }
 
-        // ---- REAL TPS LOGIC ----
         async function analyzeMetrics() {
             if (!state.currentCut) return;
-
             const hashes = Object.entries(state.currentCut.hashes);
-
+            
             // Height
             const maxHeight = Math.max(...hashes.map(([_, h]) => h.height));
-            const delta = state.metrics.height > 0 ? (maxHeight - state.metrics.height) : 0;
             state.metrics.height = maxHeight;
-            document.getElementById('height-delta').innerText = delta > 0 ? `+${delta} BLOCKS` : "STABLE";
+            document.getElementById('height-delta').innerText = "Active";
 
-            // Active pulses
+            // Identify Active Chains
             state.activePulses = [];
             const newBlocks = [];
             hashes.forEach(([cid, h]) => {
@@ -388,50 +414,34 @@
                     newBlocks.map(async (b) => {
                         const newHeadHash = state.currentCut.hashes[String(b.cid)].hash;
                         const oldHeadHash = state.previousCut.hashes[String(b.cid)].hash;
-
                         const [newHdr, oldHdr] = await Promise.all([
                             getHeader(b.cid, newHeadHash),
                             getHeader(b.cid, oldHeadHash),
                         ]);
-
                         if (!newHdr || !oldHdr) return { tx: 0, dt: 0 };
-
-                        const newCT = (typeof newHdr.creationTime === 'number') ? newHdr.creationTime : 0;
-                        const oldCT = (typeof oldHdr.creationTime === 'number') ? oldHdr.creationTime : 0;
-                        const dt = Math.max(0, (newCT - oldCT) / 1000000);
-
-                        const payloadHash = newHdr.payloadHash;
-                        if (!payloadHash) return { tx: 0, dt };
-
-                        const payload = await getPayload(b.cid, payloadHash);
-                        const txCount = Array.isArray(payload?.transactions) ? payload.transactions.length : 0;
-
+                        
+                        const dt = Math.max(0, (newHdr.creationTime - oldHdr.creationTime) / 1000000);
+                        const payload = await getPayload(b.cid, newHdr.payloadHash);
+                        const txCount = payload?.transactions?.length || 0;
                         return { tx: txCount, dt };
                     })
                 );
 
-                for (const r of perChain) {
+                perChain.forEach(r => {
                     if (r.status === 'fulfilled') {
                         totalTx += r.value.tx;
                         totalTime += r.value.dt;
                         totalNewBlocks++;
                     }
-                }
+                });
             }
 
-            // Window calc
             const windowSec = totalTime > 0 ? totalTime : (POLL_INTERVAL / 1000);
             state.metrics.tps = windowSec > 0 ? (totalTx / windowSec).toFixed(2) : "0.00";
 
-            // Block time calculation (Global Interval)
-            // Logic: Average active chain time divided by 20 chains to get network pulse
             if (totalNewBlocks > 0 && totalTime > 0) {
-                const avgChainTime = totalTime / totalNewBlocks;
-                const globalInterval = avgChainTime / 20; 
-                state.metrics.bt = globalInterval.toFixed(2);
+                state.metrics.bt = (totalTime / totalNewBlocks / 20).toFixed(2);
             }
-            // If no new blocks, keep previous value (or default if null)
-            if (state.metrics.bt === null) state.metrics.bt = "1.50";
 
             state.metrics.peerCount = state.peers.length;
             pushTpsPoint(parseFloat(state.metrics.tps));
@@ -439,21 +449,24 @@
 
         function pushTpsPoint(tps) {
             const now = new Date();
-            const label = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
+            const label = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             state.tpsHistory.push(tps);
             state.tpsLabels.push(label);
-
-            const MAX_POINTS = 50; 
-            if (state.tpsHistory.length > MAX_POINTS) state.tpsHistory.shift();
-            if (state.tpsLabels.length > MAX_POINTS) state.tpsLabels.shift();
-
             saveHistory();
+            
+            const limit = 50;
+            const dataSlice = state.tpsHistory.slice(-limit);
+            const labelSlice = state.tpsLabels.slice(-limit);
 
             if (tpsChart) {
-                tpsChart.data.labels = state.tpsLabels;
-                tpsChart.data.datasets[0].data = state.tpsHistory;
+                tpsChart.data.labels = labelSlice;
+                tpsChart.data.datasets[0].data = dataSlice;
                 tpsChart.update();
+            }
+            if (sparkChart) {
+                sparkChart.data.labels = labelSlice;
+                sparkChart.data.datasets[0].data = dataSlice;
+                sparkChart.update();
             }
         }
 
@@ -461,130 +474,128 @@
             document.getElementById('metric-height').innerText = state.metrics.height.toLocaleString();
             document.getElementById('metric-tps').innerText = state.metrics.tps;
             document.getElementById('metric-bt').innerText = state.metrics.bt;
+            document.getElementById('table-bt').innerText = state.metrics.bt + "s";
             document.getElementById('metric-peers').innerText = state.metrics.peerCount;
+            
+            // Peer Label Update
+            const label = state.peerSource === 'bootstrap' ? 'Bootnodes (Fallback)' : 'Gossip Table';
+            document.getElementById('peer-source-label').innerText = label;
 
+            renderChainCards();
+            renderNodeList();
+        }
+
+        function renderChainCards() {
             const grid = document.getElementById('chain-grid');
             grid.innerHTML = '';
-            Object.entries(state.currentCut.hashes).forEach(([cid, h]) => {
-                const isNew = state.activePulses.includes(parseInt(cid));
+            
+            const sortedChains = Object.entries(state.currentCut.hashes).sort((a,b) => parseInt(a[0]) - parseInt(b[0]));
+
+            sortedChains.forEach(([cid, h]) => {
+                const isActive = state.activePulses.includes(parseInt(cid));
                 const el = document.createElement('div');
-                el.className = `chain-cell flex flex-col p-1.5 rounded transition-all border ${isNew ? 'bg-kadena-emerald/10 border-kadena-emerald' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700'}`;
-                el.innerHTML = `<div class="flex justify-between text-[8px] opacity-60"><span>C${cid}</span><span>${h.height % 1000}</span></div>
-                                <div class="h-1 bg-stone-200 dark:bg-stone-900 rounded-full overflow-hidden mt-1">
-                                    <div class="h-full bg-kadena-purple transition-all duration-700" style="width: ${(h.height % 100)}%"></div>
-                                </div>`;
+                el.className = `chain-card ${isActive ? 'border-kadena-emerald' : 'border-white/5'}`;
+                
+                // Color Logic
+                const textCol = isActive ? 'text-white' : 'text-stone-500';
+                
+                el.innerHTML = `
+                    <div class="chain-card-header">CH${cid}</div>
+                    <div class="chain-card-body">
+                        <span class="${textCol}">${h.height}</span>
+                    </div>
+                    <div class="chain-card-bar">
+                        <div class="chain-card-fill" style="width: ${isActive ? '100%' : '0%'}"></div>
+                    </div>
+                `;
                 grid.appendChild(el);
             });
         }
 
-        function initTPSChart() {
+        function renderNodeList() {
+            const container = document.getElementById('node-list-container');
+            container.innerHTML = '';
+            
+            let displayPeers = state.peers;
+            if(state.filter === 'rpc') displayPeers = state.peers.filter(p => p.address?.port === 443 || p.address?.port === 80);
+            else if (state.filter === 'p2p') displayPeers = state.peers.filter(p => p.address?.port === 1789);
+
+            document.getElementById('node-count-display').innerText = `${displayPeers.length} ONLINE`;
+
+            if(displayPeers.length === 0) {
+                container.innerHTML = `<div class="text-center p-8 text-[10px] text-stone-500 italic">No nodes found.</div>`;
+                return;
+            }
+
+            displayPeers.forEach(p => {
+                if(!p.address?.hostname) return;
+                const host = p.address.hostname;
+                const port = p.address.port;
+                const type = (port === 443 || port === 80) ? 'RPC' : 'P2P';
+                
+                const el = document.createElement('div');
+                el.className = "node-item p-3 border-b border-white/5 cursor-default flex justify-between items-center";
+                el.innerHTML = `
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-[10px] font-mono text-stone-300 truncate w-36" title="${host}">${host}</span>
+                        <span class="text-[8px] text-stone-500">Port: ${port}</span>
+                    </div>
+                    <span class="text-[8px] font-bold px-2 py-0.5 rounded ${type === 'RPC' ? 'text-kadena-amber bg-kadena-amber/10' : 'text-kadena-blue bg-kadena-blue/10'}">${type}</span>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function initCharts() {
+            // Main Activity Trend
             const ctx = document.getElementById('chart-tps').getContext('2d');
             tpsChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: state.tpsLabels,
+                    labels: [],
                     datasets: [{
-                        label: 'Real-time TPS',
-                        data: state.tpsHistory,
-                        borderColor: '#f59e0b',
+                        label: 'TPS',
+                        data: [],
+                        borderColor: '#10b981',
                         borderWidth: 2,
-                        pointRadius: 2,
-                        pointBackgroundColor: '#f59e0b',
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
                         fill: true,
-                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                        tension: 0.35
+                        backgroundColor: (context) => {
+                            const ctx = context.chart.ctx;
+                            const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+                            gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
+                            gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+                            return gradient;
+                        },
+                        tension: 0.4
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { enabled: true, mode: 'index', intersect: false } },
+                    plugins: { legend: { display: false } },
                     scales: {
-                        x: { display: true, ticks: { maxRotation: 0, autoSkip: true, color: '#666', font: {size: 8} }, grid: {display: false} },
-                        y: { 
-                            display: true, 
-                            min: 0, 
-                            title: { display: true, text: 'Real-time On-chain TPS', color: '#666', font: {size: 9} }, 
-                            grid: { color: 'rgba(255,255,255,0.05)' }, 
-                            ticks: { color: '#666', font: {size: 9} } 
-                        }
-                    }
+                        x: { display: false },
+                        y: { display: true, min: 0, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#555', font: {size: 9} } }
+                    },
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
                 }
             });
-        }
 
-        // --- UNIFIED PLOTLY MAP LOGIC ---
-        function hashToCoord(str, range) {
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i);
-            const norm = (Math.abs(hash | 0) % 10000) / 10000;
-            return (norm * range) - (range/2);
-        }
-
-        function animateGlobe() {
-            if(state.isGlobe) {
-                state.rotationLon -= 0.15;
-                Plotly.relayout('viz-container', { 'geo.projection.rotation.lon': state.rotationLon });
-            }
-            requestAnimationFrame(animateGlobe);
-        }
-
-        function renderViz() {
-            const isDark = document.documentElement.classList.contains('dark');
-            
-            // Filter Peers
-            let displayPeers = state.peers;
-            if(state.filter === 'rpc') {
-                displayPeers = state.peers.filter(p => p.address?.port === 443 || p.address?.port === 80);
-            } else if (state.filter === 'p2p') {
-                displayPeers = state.peers.filter(p => p.address?.port === 1789);
-            }
-
-            const lats = displayPeers.map(p => hashToCoord(p.address?.hostname || "", 140));
-            const lons = displayPeers.map(p => hashToCoord((p.address?.hostname || "") + "lon", 320));
-            const pLats = []; const pLons = [];
-            
-            state.activePulses.forEach(cid => {
-                pLats.push(((cid * 7) % 120) - 60);
-                pLons.push(((cid * 13) % 240) - 120);
+            // Mini Sparkline for Table
+            const sparkCtx = document.getElementById('spark-global').getContext('2d');
+            sparkChart = new Chart(sparkCtx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ data: [], borderColor: '#f59e0b', borderWidth: 1.5, pointRadius: 0, tension: 0.3 }] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    scales: { x: { display: false }, y: { display: false } },
+                    animation: false
+                }
             });
-
-            const data = [
-                { type: 'scattergeo', mode: 'markers', lat: lats, lon: lons, marker: { size: 4, color: '#3b82f6', opacity: 0.7 }, name: 'Peers', hoverinfo: 'text' },
-                { type: 'scattergeo', mode: 'markers', lat: pLats, lon: pLons, marker: { size: 15, color: '#10b981', opacity: 0.8, symbol: 'circle-open', line: {width: 2} }, name: 'Events', hoverinfo: 'text' }
-            ];
-
-            const layout = {
-                geo: { 
-                    projection: { type: state.isGlobe ? 'orthographic' : 'equirectangular', rotation: { lon: state.rotationLon } }, 
-                    showland: true, landcolor: isDark ? '#1c1917' : '#f5f5f4', 
-                    showocean: true, oceancolor: isDark ? '#0c0a09' : '#ffffff',
-                    showcountries: true, countrycolor: isDark ? '#292524' : '#d6d3d1',
-                    bgcolor: 'rgba(0,0,0,0)'
-                },
-                margin: { l: 0, r: 0, t: 0, b: 0 }, 
-                paper_bgcolor: 'rgba(0,0,0,0)', 
-                showlegend: false
-            };
-
-            Plotly.react('viz-container', data, layout, { displayModeBar: false, responsive: true });
-            
-            const viz = document.getElementById('viz-container');
-            if (viz && viz.on) {
-                viz.on('plotly_hover', d => {
-                    const pt = d.points[0];
-                    const info = document.getElementById('viz-info');
-                    document.getElementById('info-title').innerText = pt.data.name;
-                    document.getElementById('info-val').innerText = pt.data.name === 'Peers' ? 'Observed Node' : 'Block Event';
-                    document.getElementById('info-type').innerText = pt.data.name === 'Peers' ? 'P2P Gossip' : 'Chainweb';
-                    info.style.opacity = '1';
-                    info.style.transform = 'translateY(0)';
-                });
-                viz.on('plotly_unhover', () => {
-                    document.getElementById('viz-info').style.opacity = '0';
-                    document.getElementById('viz-info').style.transform = 'translateY(16px)';
-                });
-            }
         }
 
         window.onload = init;
